@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Listen english numbers and type them</title>
+    <script src="http://code.responsivevoice.org/responsivevoice.js"></script>
+    <style>
+        .error {
+            display: none;
+        }
+        .play {
+            display: none;
+        }
+        .answer {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="loading">Loading...</div>
+<div class="error">You have bad connection or something's wrong with ResponsiveVoice</div>
+<input type="button" id="play" value="Play!" class="play" />
+<input type="text" id="answer" value="" class="answer" />
+<script>
+    var getTask = function() {
+            var randomNumber = Math.round(Math.random()*100);
+
+            return {
+                speak: function(endCallback) {
+                    window.responsiveVoice.speak("" + randomNumber, "UK English Female", {
+                        onend: endCallback || function() {}
+                    });
+                },
+                checkAnswer: function(candidate) {
+                    return parseInt(candidate) === randomNumber;
+                }
+            };
+        },
+        startTask = function(play, input, timeout) {
+            var task = getTask(),
+                timerId = null,
+                onKeyDown = function(e) {
+                    console.log(e.which);
+                    window.setTimeout(function() {
+                        if (task.checkAnswer(input.value)) {
+                            stop(true);
+                        }
+                    }, 1);
+                },
+                start = function() {
+                    input.addEventListener("keydown", onKeyDown, false);
+                    input.style.display = "block";
+                    play.style.display = "none";
+                    input.value = "";
+                    input.focus();
+                    task.speak(function() {
+                        timerId = window.setTimeout(function() {
+                            alert("You lost!");
+                            stop();
+                        }, timeout);
+                    });
+                },
+                stop = function(nextTask) {
+                    input.removeEventListener("keydown", onKeyDown, false);
+                    input.style.display = "none";
+                    play.style.display = "block";
+                    timerId && window.clearInterval(timerId);
+                    timerId = null;
+                    if (nextTask) {
+                        window.setTimeout(function() {
+                            startTask(play, input, timeout);
+                        }, 1);
+                    }
+                };
+
+            start();
+        };
+
+    window.setTimeout(function() {
+        var play = document.getElementById("play"),
+            input = document.getElementById("answer"),
+            loading = document.querySelector(".loading");
+
+        loading.style.display = "none";
+        play.style.display = "block";
+        play.addEventListener("click", function() {
+            startTask(play, input, 5000);
+        }, false);
+    }, 1000);
+
+</script>
+</body>
+</html>

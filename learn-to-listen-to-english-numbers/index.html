@@ -4,25 +4,125 @@
     <meta charset="UTF-8">
     <title>Listen english numbers and type them</title>
     <script src="http://code.responsivevoice.org/responsivevoice.js"></script>
+    <link rel="stylesheet" href="animate.css" />
     <style>
-        .error {
-            display: none;
+        hmtl, body {
+            padding: 0;
+            margin: 0;
+        }
+        .header {
+            background-color: #EFEFEF;
+            border-bottom: 1px solid #cccccc;
+            padding: 20px;
+            box-sizing: border-box;
+            font-size: 2em;
+            text-align: center;
+        }
+        .content {
+            padding: 4px;
         }
         .play {
+            color: #cc0000;
+        }
+        .answers {
+            position: relative;
+            width: 100%;
+        }
+        .correct {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 5em;
+            color: #70ff70;
+            display: none;
+        }
+        .wrong {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 5em;
+            color: #ff7070;
             display: none;
         }
         .answer {
-            display: none;
+            display: block;
+            width: 100%;
+            height: 50px;
+            margin: 0 auto;
+            font-size: 40px;
+            text-align: center;
+            color: #555555;
         }
+        .loading {
+            width: 100%;
+            height: 25px;
+            background-color: #ffffff;
+            border-top: 1px solid #EAEAEA;
+            text-align: center;
+            line-height: 25px;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+        }
+        .loading>div {
+            display: block;
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 0%;
+            height: 100%;
+            background-color: #76FF7A;
+        }
+
+        @keyframes progress {
+            from {
+                width: 100%;
+                background-color: #70ff70;
+            }
+            33% {
+                background-color: #ffff70;
+            }
+            66% {
+                background-color: #ffaf70;
+            }
+            to {
+                width: 0%;
+                background-color: #ff7070;
+            }
+        }
+        
     </style>
 </head>
 <body>
-<div class="loading">Loading...</div>
-<div class="error">You have bad connection or something's wrong with ResponsiveVoice</div>
-<input type="button" id="play" value="Play!" class="play" />
-<input type="text" id="answer" value="" class="answer" />
+    <div class="header">Listen to numbers and type them.<br>Timer is here so hurry up. <a href="#" class="play">Got it! Let's start!</a></div>
+    <div class="content">
+        <div class="loading"><div></div></div>
+        <input type="text" id="answer" value="" class="answer" />
+        <div class="answers">
+            <div class="correct animated bounceIn">Correct!</div>
+            <div class="wrong animated bounceIn">You lost!</div>
+        </div>
+    </div>
+
 <script>
-    var getTask = function() {
+    var levels = [{
+            max: 100,
+            timeout: 10000
+        }, {
+            max: 1000,
+            timeout: 10000
+        }, {
+            max: 10000,
+            timeout: 15000
+        }, {
+            max: 100000,
+            timeout: 20000
+        }],
+        getTask = function() {
             var randomNumber = Math.round(Math.random()*100);
 
             return {
@@ -36,57 +136,96 @@
                 }
             };
         },
-        startTask = function(play, input, timeout) {
+        startTask = function(input, timeout) {
             var task = getTask(),
-                timerId = null,
+                abortProgress = null,
                 onKeyDown = function(e) {
                     console.log(e.which);
                     window.setTimeout(function() {
                         if (task.checkAnswer(input.value)) {
-                            stop(true);
+                            abortProgress && abortProgress();
                         }
                     }, 1);
                 },
                 start = function() {
                     input.addEventListener("keydown", onKeyDown, false);
                     input.style.display = "block";
-                    play.style.display = "none";
                     input.value = "";
                     input.focus();
                     task.speak(function() {
-                        timerId = window.setTimeout(function() {
-                            alert("You lost!");
+                        abortProgress = progressbar(timeout, function(aborted) {
+                            if (aborted) {
+                                showCorrect();
+                            } else {
+                                showWrong();
+                            }
+                            abortProgress = null;
                             stop();
-                        }, timeout);
+                            window.setTimeout(function() {
+                                startTask(input, timeout);
+                            }, 1);
+                        });
                     });
                 },
                 stop = function(nextTask) {
                     input.removeEventListener("keydown", onKeyDown, false);
-                    input.style.display = "none";
-                    play.style.display = "block";
-                    timerId && window.clearInterval(timerId);
-                    timerId = null;
-                    if (nextTask) {
-                        window.setTimeout(function() {
-                            startTask(play, input, timeout);
-                        }, 1);
-                    }
                 };
 
             start();
+        },
+        progressbar = (function() {
+            var element = document.querySelector(".loading");
+            return function(timeout, completeCallback) {
+                var timerId;
+                element.style.display = "block";
+                element.firstChild.style.animation = "progress " + timeout + "ms 1 linear";
+                timerId = window.setTimeout(function() {
+                    completeCallback && completeCallback(false);
+                    window.setTimeout(function() {
+                        element.style.display = "none";
+                        timerId = null;
+                    }, 500);
+                }, timeout);
+                return function() {
+                    element.style.display = "none";
+                    timerId && window.clearTimeout(timerId);
+                    timerId = null;
+                    completeCallback && completeCallback(true);
+                };
+            };
+        })(),
+        progress = function() {
+            var level = 0,
+                levelProgress = 0;
+
+            return {
+                getLevel: function() {
+                    
+                }
+            };
         };
 
-    window.setTimeout(function() {
-        var play = document.getElementById("play"),
-            input = document.getElementById("answer"),
-            loading = document.querySelector(".loading");
+    var resultManager = function(className) {
+        var wrong = document.querySelector("." + className);
+        return function() {
+            wrong.className = className + " animated bounceIn";
+            wrong.style.display = "block";
+            window.setTimeout(function() {
+                wrong.className += " fadeOut";
+                window.setTimeout(function() {
+                    wrong.style.display = "none";
+                }, 1000);
+            }, 1000);
+        };
+    };
+    var showWrong = resultManager("wrong"),
+        showCorrect = resultManager("correct"),
+        play = document.querySelector(".play");
 
-        loading.style.display = "none";
-        play.style.display = "block";
         play.addEventListener("click", function() {
-            startTask(play, input, 5000);
+            play.style.display = "none";
+            startTask(document.getElementById("answer"), 10000);
         }, false);
-    }, 1000);
 
 </script>
 </body>
